@@ -1,20 +1,14 @@
 * prepare_crosswalks_occupation prepares crosswalks and label files for several occupatoin classification
 * US census OCC10, US SOC10 and ISCO08 
 
+* CHANGE THIS FOR YOUR ROOT FOLDER
+* global DIR="/home-working-ATUS/"
 
-global DIR="/Users/thomaslebarbanchon/Dropbox/Recommendations/COVID/ATUS/data/crosswalks/"
 global SOURCE="${DIR}input/occupation/"
 cd "${DIR}output/"
 
 
 import excel ${SOURCE}cenocc2010.xlsx, sheet("4-digit") firstrow clear
-/*
-unique OCC10
-count if missing(OCC10)
-count if missing(OCC10L)
-count if missing(SOC10)
-br if  missing(OCC10)
-*/
 drop if missing(OCC10)
 unique SOC 
 
@@ -24,7 +18,6 @@ replace `var'=strtrim(`var')
 
 destring OCC10, gen(OCC10_)
 
-*sort OCC10_
 sort SOC10
 compress
 save mapping_SOC10_to_OCC10.dta, replace
@@ -56,11 +49,6 @@ save labels_ISCO08.dta, replace
 
 
 import excel ${SOURCE}soc_structure_2010.xls, sheet("Sheet1") cellrange(A12:E1434) firstrow clear
-/*
-foreach var in MajorGroup MinorGroup BroadGroup DetailedOccupation E  {
-	count if missing(`var')
-}
-*/
 foreach var in MajorGroup MinorGroup BroadGroup DetailedOccupation E {
 replace `var'=strtrim(`var')
 }

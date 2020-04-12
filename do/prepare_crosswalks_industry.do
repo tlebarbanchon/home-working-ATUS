@@ -10,7 +10,9 @@
 * https://ec.europa.eu/eurostat/ramon/relations/index.cfm?TargetUrl=LST_REL&StrLanguageCode=EN&IntCurrentPage=11
 * https://www.census.gov/eos/www/naics/concordances/concordances.html
 
-global DIR="/Users/thomaslebarbanchon/Dropbox/Recommendations/COVID/ATUS/data/crosswalks/"
+* CHANGE THIS FOR YOUR ROOT FOLDER
+* global DIR="/home-working-ATUS/"
+
 global SOURCE="${DIR}input/industry/"
 cd "${DIR}output/"
 
@@ -42,8 +44,6 @@ append using naics_from_ind
 label var naics "Industry code (NAICS2012)"
 label var ind "Census Industry code (IND2012)"
 sort naics
-*by naics: egen test=total(afactor)
-*tab test
 compress
 tab naics_
 /*
@@ -129,8 +129,6 @@ rename isic4code ISIC4
 duplicates drop 
 unique ISIC
 
-*gen l=length(ISIC)
-*tab l
 sort NAICS12_4d
 compress 
 

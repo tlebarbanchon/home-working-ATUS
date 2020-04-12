@@ -1,18 +1,12 @@
 * prepare_teleworkable_DN2020 prepares dingel and neiman teleworkable data
 
-
-global DIR="/Users/thomaslebarbanchon/Dropbox/Recommendations/COVID/ATUS/"
+* CHANGE THIS FOR YOUR ROOT FOLDER
+* global DIR="/home-working-ATUS/"
 
 cd ${DIR}data/tmp
 
 global SOURCE="${DIR}data/input/"
 global OUTPUT="${DIR}data/output/"
-
-/*
-import delimited "https://raw.githubusercontent.com/jdingel/DingelNeiman-workathome/master/occ_onet_scores/output/occupations_workathome.csv", clear
-
-save ${SOURCE}teleworkable_DN2020.dta, replace
-*/
 
 * we aggregate 
 use ${SOURCE}teleworkable_DN2020.dta, clear

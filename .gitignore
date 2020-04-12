@@ -1,0 +1,9 @@
+docs_ATUS/
+output/
+
+do/root_folder.do
+
+data/input/
+data/tmp/
+data/crosswalks/input/
+
