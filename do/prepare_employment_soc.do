@@ -1,11 +1,12 @@
 * prepare_employment_soc prepares data on employment and wages at SOC10 6-digit level 
 
-global DIR="/Users/thomaslebarbanchon/Dropbox/Recommendations/COVID/ATUS/data/crosswalks/"
+* CHANGE THIS FOR YOUR ROOT FOLDER
+* global DIR="/home-working-ATUS/"
+
 global SOURCE="${DIR}input/occupation/"
 cd "${DIR}output/"
 
 
-*import excel "national_M2019_dl.xlsx", sheet("national_M2019_dl") firstrow clear
 import excel "${SOURCE}oesm18nat/national_M2018_dl.xlsx", sheet("national_dl") firstrow clear
 unique OCC_CODE
 rename OCC_CODE occ_code
@@ -38,7 +39,6 @@ destring wageannual_mean, replace force
 count if wagehourly_mean=="*"
 destring wagehourly_mean, replace force
 
-*keep if o_group=="detailed"
 unique occ_code
 
 keep occ_code tot_emp wage*

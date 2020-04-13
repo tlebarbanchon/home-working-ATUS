@@ -1,8 +1,4 @@
 * remote_work produces stats on remote-working by occupation and industry from ATUS
-* we classify occupations in the census 2010 categories, SOC2010 aggregate and 6-digits categroies, 
-* and in ISCO-2008 categories and in SSYK2012 swedish categories
-* we classify indsutries in the census 2012 categories, in NAICS 2012 4-digits categories, 
-* and in ISIC 4.0
 
 * namely it reproduces table 7 of bls website with more detailed occupation
 * NOTE from Table 7: Includes work at main job only and at locations other than home or workplace. Excludes travel related to work. Data refer to persons 15 years and over.
@@ -23,14 +19,32 @@
 * home_working_ind, home_working_naics, home_working_isic
 * 
 
-global DIR="/Users/thomaslebarbanchon/Dropbox/Recommendations/COVID/ATUS/"
+* INSTALL unique, outreg2, labutil, sutex, dataout, binscatter packages
+ssc install unique
+ssc install outreg2
+ssc install labutil
+ssc install sutex
+ssc install dataout
+ssc install binscatter
 
+* CHANGE THIS FOR YOUR ROOT FOLDER
+* global DIR="/home-working-ATUS/"
+
+global OUTPUT="${DIR}data/output/"
+global CROSSWALK="${DIR}data/crosswalks/output/"
+
+
+mkdir ${DIR}data/tmp
 cd ${DIR}data/tmp
 
-global SOURCE="${DIR}data/input/"
-global OUTPUT="${DIR}data/output/"
+mkdir ${DIR}output/
 global TAB="${DIR}output/"
-global CROSSWALK="${DIR}data/crosswalks/output/"
+
+* Finally: this is the folder where the ATUS datasets should be downloaded to
+* subfolder: 'atusresp-0318'; file: 'atusresp_0318.dta'
+* subfolder: 'atusrost-0318'; file: 'atusrost_0318.dta'
+* subfolder: 'atusact-0318'; file: 'atusact_0318.dta'
+global SOURCE="${DIR}data/input/"
 
 
 * PLAN OF DO-FILE
@@ -63,7 +77,6 @@ sort tucaseid tulineno
 unique tucaseid 
 unique tucaseid tulineno
 keep if inrange(tuyear,2011,2018)
-*keep if inrange(tuyear,2018,2018)
 save atusresp_, replace
 
 ********************************************************************************
@@ -78,8 +91,6 @@ tab year
 destring year, replace
 * there is a break in occupation classification in 2011
 keep if inrange(year,2011,2018)
-*keep if inrange(year,2018,2018)
-*keep if inrange(tuyear,2018,2018)
 tab terrp
 tab terrp year 
 tab terrp if tulineno==1
@@ -97,38 +108,19 @@ tab year
 destring year, replace
 * there is a break in occupation classification in 2011
 keep if inrange(year,2011,2018)
-*keep if inrange(year,2018,2018)
 
 unique tucaseid tuactivity_n
 sort tucaseid tuactivity_n
 merge m:1 tucaseid using atusresp_
 cap drop _m
-*unique tucaseid tuactivity_n
 
 merge m:1 tucaseid using atusrost_
 cap drop _m
-*tab1 teage tesex
-
-/*
-tab trcodep
-codebook trcodep
-
-sum tuactdur, d
-count if trcodep==50101
-tab tewhere
-
-tab tewhere if trcodep==50101
-tab tewhere if trcodep==50101, nol
-
-br if trcodep==50101
-br trcodep trtier1p trtier2p
-*/
 
 * restrict to indiv. declaring some work periods during the day
 keep if trcodep==50101
 * restrict to employed workers (according to labor force status)
 keep if telfs==1 
-*tab trmjocgr [aweight=tufnwgtp] if rk==1 
 
 
 bys tucaseid: egen dur_home_=total(tuactdur) if trcodep==50101 & tewhere==1 
@@ -145,14 +137,6 @@ bys tucaseid: egen dur_otherplace_=total(tuactdur) if trcodep==50101 & (tewhere!
 bys tucaseid: egen dur_otherplace=mean(dur_otherplace_) if trcodep==50101
 drop dur_otherplace_
 replace dur_otherplace=0 if missing(dur_otherplace)
-
-*br tucasei tuactivity_n trcodep tewhere tuactdur dur*
-
-/*
-gen home=dur_home>0
-gen workplace=dur_workplace>0
-gen otherplace=dur_otherplace>0
-*/
 
 sort tucaseid tustarttim 
 cap drop rk
@@ -173,18 +157,6 @@ tab otherplace if rk==1
 tab home [aweight=tufnwgtp]if rk==1
 tab workplace [aweight=tufnwgtp] if rk==1
 tab otherplace [aweight=tufnwgtp] if rk==1
-
-/*
-explore occupation vars
-br trdtocc1 trmjocc1 trmjocgr teio1ocd tuiodp3
-desc trdtocc1 trmjocc1 trmjocgr teio1ocd tuiodp3
-codebook trdtocc1 trmjocc1 trmjocgr teio1ocd tuiodp3
-
-teio1ocd is detailed occupation codes: 499
-trmjocgr contains 6 major occupation groups
-trmjocc1 contains 10 broad occupation groups
-trdtocc1 contains 22 wide occupation groups
-*/
 
 * restrict to one observation per workers
 keep if rk==1
@@ -262,10 +234,6 @@ graph hbar (mean) dur_workplace dur_home [aweight=tufnwgtp] if year==2018, over(
 graph export ${TAB}bar_dur_workplace_`var'_2018.pdf, replace
 }
 
-*label dir
-*label list labeltrmjocc1
-*splitvallabels labeltrmjocc1
-
 * descriptive stats pooled over 2011-2018
 foreach var in trmjocc1 trmjocgr {
 graph hbar (mean) dur_workplace dur_home [aweight=tufnwgtp], over(`var') ///
@@ -273,7 +241,7 @@ graph hbar (mean) dur_workplace dur_home [aweight=tufnwgtp], over(`var') ///
 graph export ${TAB}bar_dur_workplace_`var'_2018.pdf, replace
 }
 
-* looks good plots
+* looking good plots
 graph hbar (mean) dur_workplace dur_home [aweight=tufnwgtp] if year==2018, over(trmjocc1 ///	
 	,relabel(1 `""Management, business," "and financial occupations""' ///
 	2 "Professional and related" ///
@@ -380,7 +348,6 @@ graph export ${TAB}bar_other.pdf, replace
 
 desc trmjind1 trimind1  trdtind1 teio1icd
 codebook trmjind1 trimind1  trdtind1 teio1icd
-br trmjind1 trimind1  trdtind1 teio1icd
 
 tab trmjind1
 
@@ -423,7 +390,6 @@ use atusact_.dta, clear
 
 gen C=1
 
-*reghdfe share_home C [aweight=tufnwgtp], a(i.teio1ocd)
 reg share_home C i.teio1ocd [aweight=tufnwgtp]
 testparm i.teio1ocd
 outreg2 using ${TAB}share_home.tex, label tex replace ///
@@ -523,11 +489,9 @@ use atusact_.dta, clear
 
 desc trmjind1 trimind1  trdtind1 teio1icd
 codebook trmjind1 trimind1  trdtind1 teio1icd
-br trmjind1 trimind1  trdtind1 teio1icd
 
 * Since ATUS 2014, 2012 Census Industry Classification
 * From ATUS 2010-2013, 2007 Census Industry Classification
-
 
 tab teio1icd
 desc teio1icd
@@ -556,8 +520,6 @@ total workers
 save dur_home_`var', replace 
 restore
 }	
-
-*use dur_home_teio1icd, clear
 
 	
 	
@@ -631,7 +593,6 @@ drop _m
 total workers
 * 173 millions
 save ${OUTPUT}home_working_OCC10, replace 
-*use ${OUTPUT}home_working_OCC10, clear
 
 use ${OUTPUT}home_working_OCC10, clear
 sort OCC10_
@@ -661,7 +622,6 @@ save home_working_SOC10-5digit.dta, replace
 
 use  ${OUTPUT}home_working_SOC10,clear
 tab SOC10 if substr(SOC10,6,1)=="0"
-*keep if substr(SOC10,7,1)=="0"
 keep if substr(SOC10,6,1)=="0"
 gen SOC10_3d=substr(SOC10,1,4)
 sort SOC10_3d
@@ -673,14 +633,11 @@ rename _m _m1
 gen SOC10_5d=substr(SOC10,1,6)
 sort SOC10_5d SOC10
 merge m:1 SOC10_5d using home_working_SOC10-5digit, update gen(_m2)
-*br if _m2==2
 tab _m1 _m2
-*br if _m1==1 & _m2==1
 gen SOC10_3d=substr(SOC10,1,4)
 sort SOC10_3d SOC10
 merge m:1 SOC10_3d using home_working_SOC10-3digit, update gen(_m3)
 count if missing(share)
-*br if missing(share)
 *out of 62 occupation for which we are missing ATUS data, 20 are in the army
 *real missings are 42
 drop _m1 SOC10_5d _m2 SOC10_3d _m3
@@ -711,8 +668,6 @@ merge 1:1 occ_code using "${CROSSWALK}employment_SOC10.dta"
 * 45-3011, 45-3021 just missing
 * 13-1021, 13-1022, 13-1023 grouped in 13-1020
 sort occ_code
-*br occ_code tot_emp share workers _m 
-*br occ_code tot_emp share if _m==1 
 drop if _m==2
 total workers
 total tot_emp
@@ -782,7 +737,6 @@ merge 1:m SOC10 using  "${CROSSWALK}mapping_ISCO08_to_SOC10.dta"
 drop _m
 
 foreach v of var * {
-	*disp "`v'"
 	local l`v' : variable label `v'
        if `"`l`v''"' == "" {
 		local l`v' "`v'"
@@ -810,13 +764,10 @@ sort ISCO08
 merge 1:m ISCO08 using "${CROSSWALK}mapping_ISCO08_to_SSYK2012.dta"
 keep if _m==3
 drop _m
-*br if _m==1
 label var SSYK2012_ "Swedish occupational classification (SSYK2012, 4-digit, numeric)"
-*label dir
 sort SSYK2012 ISCO08_ 
 
 foreach v of var * {
-	*disp "`v'"
 	local l`v' : variable label `v'
        if `"`l`v''"' == "" {
 		local l`v' "`v'"
@@ -830,9 +781,6 @@ foreach v of var * {
 	}
 	
 label values SSYK2012_ SSYK2012_ 
-*sort ISCO08
-*merge 1:1 ISCO08 using "${CROSSWALK}labels_ISCO08.dta"
-* despite imperfect match of crosswalk, we have exhaustive list of 
 count if obs==0
 * 9 SSYK codes out of 429 do not have info from ATUS...
 * 3 are from the army
@@ -874,7 +822,6 @@ sort teio1icd
 merge m:1 teio1icd using dur_home_teio1icd
 tab teio1icd if _m==1
 tab teio1icd if _m==2
-*br if _m!=3
 /*
  480 and 590 census codes missing from code lists or crosswalk (very few obs, prob coding errors)
 */
@@ -918,7 +865,6 @@ use "${CROSSWALK}mapping_ISIC4_from_NAICS.dta", clear
 gen naics=NAICS12_4d
 sort naics
 merge m:1 naics using ${OUTPUT}home_working_naics.dta
-br if _m==1
 drop if _m==1
 drop _m
 sort ISIC4
@@ -944,26 +890,13 @@ save ${OUTPUT}home_working_isic.dta, replace
 
 
 
-global DIR="/Users/thomaslebarbanchon/Dropbox/Recommendations/COVID/ATUS/"
-
-cd ${DIR}data/tmp
-
-global SOURCE="${DIR}data/input/"
-global OUTPUT="${DIR}data/output/"
-
-
 
 ********************************************************************************
 ********************************************************************************
 * G. PRODUCE SUMMARY STATS OF OCCUPATION-LEVEL DATASETS
 
 use  ${OUTPUT}home_working_OCC10, clear 
-/*
-sutex  share_home dur_workplace dur_home dur_otherplace dur workplace home otherplace obs workers, ///
-	labels nobs file(${TAB}sumstat_OCC10) replace
-*/
 gen workers_=int(workers)
-*sutex  share_home dur_workplace dur_home dur_otherplace dur workplace home otherplace [weight=workers_]
 sutex  share_home dur_workplace dur_home workplace home [weight=workers_], ///
 	labels nobs file(${TAB}sumstat_OCC10) replace
 
@@ -977,7 +910,6 @@ hist obs if inrange(obs,1,50), width(1) freq ///
 	 note("Truncated above median occupation with 50 observations")
 graph export ${TAB}hist_observations.pdf, replace
 	 
-*sum workers, d
 hist share_home [weight=workers_], title("Across detailed occupation (OCC10)") ///
 	note("ATUS 2011-2018. Weighted.") width(0.05)
 graph export ${TAB}hist_share_home_OCC10_weight.pdf, replace
@@ -997,7 +929,7 @@ dataout, save("${TAB}table_rank_OCC10") tex  replace
 	
 use  ${OUTPUT}home_working_SOC10-6digit-all, clear 
 *replace workers=workers/8
-sutex  share_home dur_workplace dur_home dur_otherplace dur workplace home otherplace obs workers, ///
+sutex  share_home dur_workplace dur_home dur_otherplace dur workplace home otherplace obs, ///
 	labels nobs file(${TAB}sumstat_SOC10) replace
 
 use  ${OUTPUT}home_working_SOC10-6digit-all_emp, clear 
@@ -1015,7 +947,6 @@ sutex share_home dur_workplace dur_home workplace home wageannual [weight=tot_em
 gen homewage=share_home*wageannual	
 
 sum wageannual homewage if missing(share_home)==0
-sum wageannual homewage [weight=tot_emp] if 
 	
 	
 use  ${OUTPUT}home_working_ISCO08, clear 
@@ -1047,7 +978,6 @@ hist obs if inrange(obs,1,50), width(1) freq ///
 graph export ${TAB}hist_observations.pdf, replace
 	 
 replace workers=int(workers)
-*sum workers, d
 hist share_home [weight=workers], ///
 	title("Across detailed industries (census 2012 classification)") ///
 	note("ATUS 2014-2018. Weighted.") width(0.05)
@@ -1117,100 +1047,4 @@ binscatter telework share_home, line(qfit) ///
 graph export ${TAB}bs_share_home_teleworkDN2020.pdf, replace	
 
 
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-********************************************************************************
-*****
-* SCRAP
-
-global DIR="/Users/thomaslebarbanchon/Dropbox/Recommendations/COVID/ATUS/"
-
-cd ${DIR}data/tmp
-
-global SOURCE="${DIR}data/input/"
-global OUTPUT="${DIR}data/output/"
-
-
-
-
-use ${OUTPUT}home_working_SOC10-6digit-all, clear
-cap drop OCC10 OCC10_ teio1ocd
-gen occ_code=SOC10
-merge 1:1 occ_code using "${CROSSWALK}employment_SOC10.dta"
-/*
-    Result                           # of obs.
-    -----------------------------------------
-    not matched                           621
-        from master                        44  (_merge==1)
-        from using                        577  (_merge==2)
-
-    matched                               796  (_merge==3)
-    -----------------------------------------
-*/
-tab SOC10 if _m==1
-*21-1011, 21-1014 grouped into 21-1018
-*25-3099 split into 25-3097, 25-3098
-*29-2010, 29-2011 grouped into 29-2012
-*39-1011 39-1012 grouped into 39-1010
-*39-7011, 39-7012 grouped into 39-7010
-*45-3011, 45-3021 just missing
-*47-4091, 47-4099 grouped into 7-4090
-*51-2022, 51-2023 grouped into 51-2028
-*51-2092,51-2099 grouped into 51-2098
-*53-1021, 53-1031 grouped in 53-1048
-
-
-sort occ_code
-br occ_code tot_emp share _m 
-drop if _m==2
-drop _m
-gen SOC10_5d=substr(SOC10,1,6)
-sort SOC10_5d
-by SOC10_5d: gen tot=_N
-tab tot if missing(tot_emp)
-br SOC10* tot if missing(tot_emp) & substr(SOC10,1,2)!="55"
-tab tot if missing(tot_emp) & substr(SOC10,1,2)!="55"
-replace occ_code=SOC10_5d+"0" if missing(tot_emp) 
-replace tot=. if !missing(tot_emp)
-merge m:1 occ_code using "${CROSSWALK}employment_SOC10.dta", ///
-	update
-replace tot_emp=tot_emp/tot if missing(tot)==0
-drop if _m==2
-drop _m
-count if missing(tot_emp)
-*  88
-replace occ_code=SOC10_5d+"8" if missing(tot_emp) & substr(SOC10,7,1)=="9"
-replace tot=. if !missing(tot_emp)
-merge m:1 occ_code using "${CROSSWALK}employment_SOC10.dta", ///
-	update
-drop if _m==2
-br occ_code tot_emp share _m 
-br occ_code tot_emp share _m if _m==1 & substr(SOC10,1,2)!="55"
-* 15-1110
-* 29-1060
-* 31-1010
-drop _m
-* 78
-count if missing(tot_emp)
-total tot_emp
-* 132 millions, not enough...
-save ${OUTPUT}home_working_SOC10-6digit-all_emp.dta, replace
-
-
-	
-	
 	
